@@ -162,34 +162,41 @@ const saveCommand: SlashCommand = {
 
 
     try {
+      //const gitStatus = await repo.status(['--porcelain']);
+      //if (!gitStatus.isClean()) {
+      //  if (!context.overwriteConfirmed) {
+      //    return {
+      //      type: 'confirm_action',
+      //      prompt: React.createElement(
+      //        Text,
+      //        null,
+      //        'Repo not clean, add all and commit all changes?',
+      //      ),
+      //      originalInvocation: {
+      //        raw: context.invocation?.raw || `/chat-git save ${tag}`,
+      //      },
+      //    };
+      //  }
+      //}
       const gitStatus = await repo.status(['--porcelain']);
       if (!gitStatus.isClean()) {
-        return {
-          type: 'confirm_action',
-          prompt: React.createElement(
-            Text,
-            null,
-            'Repo not clean, add all and commit all changes?',
-          ),
-          originalInvocation: {
-            raw: context.invocation?.raw || `/chat-git save ${tag}`,
-          },
-        };
-        repo
+        await repo
           .add('/*')
           .addTag(`chat-git ${tag}`)
           .commit(`commit made with chat-git tag ${tag}`);
       }
+      await repo.revparse(['HEAD']);
     } catch (error) {
       return {
         type: 'message',
         messageType: 'error',
-        content: 'Checking git status failed',
+        content: 'Git branch, checkout, add, or commit failed',
       };
     }
 
     const authType = config?.getContentGeneratorConfig()?.authType;
     await logger.saveCheckpoint({ history, authType }, tag);
+    await j TODO find out how to save
     return {
       type: 'message',
       messageType: 'info',
@@ -204,7 +211,7 @@ const resumeCommand: SlashCommand = {
   name: 'resume',
   altNames: ['load'],
   description:
-    'Resume a conversation from a checkpoint. Usage: /chat resume <tag>',
+    'Resume a conversation and snapshot from a checkpoint. Usage: /chat-git resume <tag>',
   kind: CommandKind.BUILT_IN,
   autoExecute: true,
   action: async (context, args) => {
