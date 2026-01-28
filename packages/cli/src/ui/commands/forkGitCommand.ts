@@ -112,7 +112,8 @@ export const forkGitCommand: SlashCommand = {
         commitId = `Error: ${(error as Error).message}`;
       }
 
-      await logger.saveCheckpoint({ history, authType, commitId }, tag);
+      //await logger.saveCheckpoint({ history, authType, commitId }, tag);
+      await logger.saveCheckpoint({ history, authType }, tag);
       return {
         type: 'message',
         messageType: 'info',
