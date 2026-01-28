@@ -28,6 +28,7 @@ import type {
 import { MessageType } from '../types.js';
 import { exportHistoryToFile } from '../utils/historyExportUtils.js';
 import { convertToRestPayload } from '@google/gemini-cli-core';
+import { simpleGit } from 'simple-git';
 
 const getSavedChatGitTags = async (
   context: CommandContext,
@@ -88,7 +89,7 @@ const listCommand: SlashCommand = {
 const saveCommand: SlashCommand = {
   name: 'save',
   description:
-    'Save the current conversation as a checkpoint. Usage: /chat save <tag>',
+    'Save the current conversation as a checkpoint and commit current state to git. Usage: /chat-git save <tag>',
   kind: CommandKind.BUILT_IN,
   autoExecute: false,
   action: async (context, args): Promise<SlashCommandActionReturn | void> => {
@@ -104,6 +105,24 @@ const saveCommand: SlashCommand = {
     const { logger, config } = context.services;
     await logger.initialize();
 
+    const repo = simpleGit(process.cwd());
+    try {
+      const isRepoDefined = await repo.checkIsRepo();
+      if (!isRepoDefined) {
+        return {
+          type: 'message',
+          messageType: 'error',
+          content: 'Current working directory is not git repo. Unable to proceed with chat-git.',
+        };
+      }
+    } catch (error) {
+      return {
+        type: 'message',
+        messageType: 'error',
+        content: 'Current working directory is not git repo or checkIsRepo failed. Unable to proceed with chat-git.',
+      };
+    }
+
     if (!context.overwriteConfirmed) {
       const exists = await logger.checkpointExists(tag);
       if (exists) {
@@ -117,7 +136,7 @@ const saveCommand: SlashCommand = {
             ' already exists. Do you want to overwrite it?',
           ),
           originalInvocation: {
-            raw: context.invocation?.raw || `/chat save ${tag}`,
+            raw: context.invocation?.raw || `/chat-git save ${tag}`,
           },
         };
       }
@@ -133,23 +152,51 @@ const saveCommand: SlashCommand = {
     }
 
     const history = chat.getHistory();
-    if (history.length > INITIAL_HISTORY_LENGTH) {
-      const authType = config?.getContentGeneratorConfig()?.authType;
-      await logger.saveCheckpoint({ history, authType }, tag);
-      return {
-        type: 'message',
-        messageType: 'info',
-        content: `Conversation checkpoint saved with tag: ${decodeTagName(
-          tag,
-        )}.`,
-      };
-    } else {
+    if (history.length <= INITIAL_HISTORY_LENGTH) {
       return {
         type: 'message',
         messageType: 'info',
         content: 'No conversation found to save.',
       };
     }
+
+
+    try {
+      const gitStatus = await repo.status(['--porcelain']);
+      if (!gitStatus.isClean()) {
+        return {
+          type: 'confirm_action',
+          prompt: React.createElement(
+            Text,
+            null,
+            'Repo not clean, add all and commit all changes?',
+          ),
+          originalInvocation: {
+            raw: context.invocation?.raw || `/chat-git save ${tag}`,
+          },
+        };
+        repo
+          .add('/*')
+          .addTag(`chat-git ${tag}`)
+          .commit(`commit made with chat-git tag ${tag}`);
+      }
+    } catch (error) {
+      return {
+        type: 'message',
+        messageType: 'error',
+        content: 'Checking git status failed',
+      };
+    }
+
+    const authType = config?.getContentGeneratorConfig()?.authType;
+    await logger.saveCheckpoint({ history, authType }, tag);
+    return {
+      type: 'message',
+      messageType: 'info',
+      content: `Conversation checkpoint saved with tag: ${decodeTagName(
+        tag,
+      )}.`,
+    };
   },
 };
 
