@@ -5,7 +5,7 @@
  */
 
 import * as fsPromises from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, writeFile, appendFile } from 'node:fs';
 import React from 'react';
 import { Text } from 'ink';
 import { theme } from '../semantic-colors.js';
@@ -211,9 +211,9 @@ const saveCommand: SlashCommand = {
     const geminiDir = tmpDir; // TODO tmpDir is currently hard coded
     const chatGitLogFile = path.join(geminiDir, "chat-git-log.jsonl");
     if (!existsSync(chatGitLogFile)) {
-      fsPromises.writeFile(chatGitLogFile, JSON.stringify(chatGitLogEntry));
+      writeFile(chatGitLogFile, JSON.stringify(chatGitLogEntry), 'utf-8', (err) => {});
     } else {
-      fsPromises.appendFile(chatGitLogFile, JSON.stringify(chatGitLogEntry));
+      appendFile(chatGitLogFile, JSON.stringify(chatGitLogEntry), 'utf-8', (err) => {});
     }
     return {
       type: 'message',
