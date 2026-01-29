@@ -5,7 +5,7 @@
  */
 
 import * as fsPromises from 'node:fs/promises';
-import { existsSync, writeFileSync, appendFileSync, readFileSync } from 'node:fs';
+import { existsSync, writeFileSync, readFileSync } from 'node:fs';
 import React from 'react';
 import { Text } from 'ink';
 import { theme } from '../semantic-colors.js';
@@ -168,22 +168,6 @@ const saveCommand: SlashCommand = {
 
     let commitHash;
     try {
-      //const gitStatus = await repo.status(['--porcelain']);
-      //if (!gitStatus.isClean()) {
-      //  if (!context.overwriteConfirmed) {
-      //    return {
-      //      type: 'confirm_action',
-      //      prompt: React.createElement(
-      //        Text,
-      //        null,
-      //        'Repo not clean, add all and commit all changes?',
-      //      ),
-      //      originalInvocation: {
-      //        raw: context.invocation?.raw || `/chat-git save ${tag}`,
-      //      },
-      //    };
-      //  }
-      //}
       const gitStatus = await repo.status(['--porcelain']);
       if (!gitStatus.isClean()) {
         await repo
@@ -214,8 +198,14 @@ const saveCommand: SlashCommand = {
         writeFileSync(chatGitLogFile, JSON.stringify(chatGitLog), 'utf-8');
       } else {
           const chatGitLog = JSON.parse(readFileSync(chatGitLogFile, 'utf-8'));
-          chatGitLog.push(chatGitLogEntry);
-          appendFileSync(chatGitLogFile, JSON.stringify(chatGitLog), 'utf-8');
+          // overwrite entry if tag reused
+          const tagReused = chatGitLog.find((entry : { commitHash : string; tag : string }) => {
+            if (entry.tag != tag) return false;
+            entry.commitHash = commitHash;
+            return true;
+          });
+          if (!tagReused) chatGitLog.push(chatGitLogEntry);
+          writeFileSync(chatGitLogFile, JSON.stringify(chatGitLog), 'utf-8');
       }
     } catch (error) {
       return {
