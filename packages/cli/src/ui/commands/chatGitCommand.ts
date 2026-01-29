@@ -32,7 +32,8 @@ import { convertToRestPayload } from '@google/gemini-cli-core';
 import { simpleGit } from 'simple-git';
 
 // TODO chnage to something not hard-coded
-const tmpDir = '.gemini/chatGitTags.jsonl';
+const geminiDir = '.gemini';
+const chatGitLogFile = path.join(geminiDir, 'chatGitTags.jsonl');
 
 const getSavedChatGitTags = async (
   context: CommandContext,
@@ -208,8 +209,6 @@ const saveCommand: SlashCommand = {
       tag: tag,
     };
     //const cfg = context.services.config;
-    const geminiDir = tmpDir; // TODO tmpDir is currently hard coded
-    const chatGitLogFile = path.join(geminiDir, "chat-git-log.jsonl");
     if (!existsSync(chatGitLogFile)) {
       writeFile(chatGitLogFile, JSON.stringify(chatGitLogEntry), 'utf-8', (err) => {});
     } else {
