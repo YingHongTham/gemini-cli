@@ -215,7 +215,7 @@ const saveCommand: SlashCommand = {
     } else {
       appendFile(chatGitLogFile, JSON.stringify(chatGitLogEntry), 'utf-8', (err) => {});
     }
-    const ans = await writeFile("~/tmp_file.txt", "helow 2026.01.29", 'utf-8', (err) => {
+    const ans = await writeFile("./tmp_file_2026.01.29.txt", "hello 2026.01.29", 'utf-8', (err) => {
       if (err) {
         return {
           type: 'message',
@@ -225,7 +225,7 @@ const saveCommand: SlashCommand = {
       } else {
         return null;
       }
-    }); TODO problem here with writeFile, no file written.. likely also appendFile problem
+    });// TODO problem here with writeFile, no file written.. likely also appendFile problem
     if (ans !== null) return ans;
     return {
       type: 'message',
