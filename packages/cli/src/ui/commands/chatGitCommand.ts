@@ -215,7 +215,7 @@ const saveCommand: SlashCommand = {
     } else {
       appendFile(chatGitLogFile, JSON.stringify(chatGitLogEntry), 'utf-8', (err) => {});
     }
-    const ans = await writeFile("./tmp_file_2026.01.29.txt", "hello 2026.01.29", 'utf-8', (err) => {
+    const ans = await writeFile("./.gemini/tmp_file_2026.01.29_02.txt", "hello 2026.01.29 02", 'utf-8', (err) => {
       if (err) {
         return {
           type: 'message',
