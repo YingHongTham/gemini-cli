@@ -215,7 +215,18 @@ const saveCommand: SlashCommand = {
     } else {
       appendFile(chatGitLogFile, JSON.stringify(chatGitLogEntry), 'utf-8', (err) => {});
     }
-    writeFile("~/tmp_file.txt", "helow 2026.01.29", 'utf-8', (err) => {});
+    const ans = await writeFile("~/tmp_file.txt", "helow 2026.01.29", 'utf-8', (err) => {
+      if (err) {
+        return {
+          type: 'message',
+          messageType: 'error',
+          content: 'Failed to write to tmp_file.txt',
+        };
+      } else {
+        return null;
+      }
+    });
+    if (ans !== null) return ans;
     return {
       type: 'message',
       messageType: 'info',
