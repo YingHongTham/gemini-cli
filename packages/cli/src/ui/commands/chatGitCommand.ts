@@ -32,7 +32,7 @@ import { convertToRestPayload } from '@google/gemini-cli-core';
 import { simpleGit } from 'simple-git';
 
 // TODO chnage to something not hard-coded
-const tmpDir = '~/.gemini/tmp/21937cce77e17d9cc3656b8e088756efd1af063cdd5ce8d4484a0fe0f98c9c2c/';
+const tmpDir = '.gemini/chatGitTags.jsonl';
 
 const getSavedChatGitTags = async (
   context: CommandContext,
@@ -215,18 +215,18 @@ const saveCommand: SlashCommand = {
     } else {
       appendFile(chatGitLogFile, JSON.stringify(chatGitLogEntry), 'utf-8', (err) => {});
     }
-    const ans = await writeFile("./.gemini/tmp_file_2026.01.29_02.txt", "hello 2026.01.29 02", 'utf-8', (err) => {
-      if (err) {
-        return {
-          type: 'message',
-          messageType: 'error',
-          content: 'Failed to write to tmp_file.txt',
-        };
-      } else {
-        return null;
-      }
-    });// TODO problem here with writeFile, no file written.. likely also appendFile problem
-    if (ans !== null) return ans;
+    //const ans = await writeFile("./.gemini/tmp_file_2026.01.29_02.txt", "hello 2026.01.29 02", 'utf-8', (err) => {
+    //  if (err) {
+    //    return {
+    //      type: 'message',
+    //      messageType: 'error',
+    //      content: 'Failed to write to tmp_file.txt',
+    //    };
+    //  } else {
+    //    return null;
+    //  }
+    //});
+    //if (ans !== null) return ans;
     return {
       type: 'message',
       messageType: 'info',
