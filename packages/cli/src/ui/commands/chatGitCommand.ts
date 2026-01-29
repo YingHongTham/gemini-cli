@@ -225,7 +225,7 @@ const saveCommand: SlashCommand = {
       } else {
         return null;
       }
-    });
+    }); TODO problem here with writeFile, no file written.. likely also appendFile problem
     if (ans !== null) return ans;
     return {
       type: 'message',
