@@ -30,6 +30,9 @@ import { exportHistoryToFile } from '../utils/historyExportUtils.js';
 import { convertToRestPayload } from '@google/gemini-cli-core';
 import { simpleGit } from 'simple-git';
 
+// TODO chnage to something not hard-coded
+const tmpDir = '~/.gemini/tmp/21937cce77e17d9cc3656b8e088756efd1af063cdd5ce8d4484a0fe0f98c9c2c/';
+
 const getSavedChatGitTags = async (
   context: CommandContext,
   mtSortDesc: boolean,
@@ -161,6 +164,7 @@ const saveCommand: SlashCommand = {
     }
 
 
+    let commitHash;
     try {
       //const gitStatus = await repo.status(['--porcelain']);
       //if (!gitStatus.isClean()) {
@@ -181,22 +185,30 @@ const saveCommand: SlashCommand = {
       const gitStatus = await repo.status(['--porcelain']);
       if (!gitStatus.isClean()) {
         await repo
-          .add('/*')
-          .addTag(`chat-git ${tag}`)
-          .commit(`commit made with chat-git tag ${tag}`);
+          .add('./*')
+          .addTag(`chat-git-${tag}`)
+          .commit(`commit made with chat-git tag ${tag}`, { '--no-verify':null });
       }
-      await repo.revparse(['HEAD']);
+      commitHash = await repo.revparse(['HEAD']);
     } catch (error) {
       return {
         type: 'message',
         messageType: 'error',
-        content: 'Git branch, checkout, add, or commit failed',
+        content: `Git branch, checkout, add, or commit failed, ${error}`,
       };
     }
 
     const authType = config?.getContentGeneratorConfig()?.authType;
     await logger.saveCheckpoint({ history, authType }, tag);
-    await j TODO find out how to save
+    const chatGitLogEntry = {
+      //sessionId: logger.sessionId,
+      //timeStamp: logger.timestamp,
+      commitHash: commitHash,
+      tag: tag,
+    };
+    //const cfg = context.services.config;
+    const geminiDir = tmpDir;
+    fsPromises.appendFile(path.join(geminiDir, "chat-git-log.jsonl"), JSON.stringify(chatGitLogEntry));
     return {
       type: 'message',
       messageType: 'info',
