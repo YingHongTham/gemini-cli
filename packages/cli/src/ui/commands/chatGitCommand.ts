@@ -5,7 +5,7 @@
  */
 
 import * as fsPromises from 'node:fs/promises';
-import { existsSync, writeFile, appendFile } from 'node:fs';
+import { existsSync, writeFileSync, appendFileSync, readFileSync } from 'node:fs';
 import React from 'react';
 import { Text } from 'ink';
 import { theme } from '../semantic-colors.js';
@@ -33,7 +33,7 @@ import { simpleGit } from 'simple-git';
 
 // TODO chnage to something not hard-coded
 const geminiDir = '.gemini';
-const chatGitLogFile = path.join(geminiDir, 'chatGitTags.jsonl');
+const chatGitLogFile = path.join(geminiDir, 'chatGitTags.json');
 
 const getSavedChatGitTags = async (
   context: CommandContext,
@@ -208,30 +208,28 @@ const saveCommand: SlashCommand = {
       commitHash: commitHash,
       tag: tag,
     };
-    //const cfg = context.services.config;
-    if (!existsSync(chatGitLogFile)) {
-      writeFile(chatGitLogFile, JSON.stringify(chatGitLogEntry), 'utf-8', (err) => {});
-    } else {
-      appendFile(chatGitLogFile, JSON.stringify(chatGitLogEntry), 'utf-8', (err) => {});
+    try {
+      if (!existsSync(chatGitLogFile)) {
+        const chatGitLog = [chatGitLogEntry];
+        writeFileSync(chatGitLogFile, JSON.stringify(chatGitLog), 'utf-8');
+      } else {
+          const chatGitLog = JSON.parse(readFileSync(chatGitLogFile, 'utf-8'));
+          chatGitLog.push(chatGitLogEntry);
+          appendFileSync(chatGitLogFile, JSON.stringify(chatGitLog), 'utf-8');
+      }
+    } catch (error) {
+      return {
+        type: 'message',
+        messageType: 'error',
+        content: `Reading or writing to ${chatGitLogFile} failed ${error}`,
+      };
     }
-    //const ans = await writeFile("./.gemini/tmp_file_2026.01.29_02.txt", "hello 2026.01.29 02", 'utf-8', (err) => {
-    //  if (err) {
-    //    return {
-    //      type: 'message',
-    //      messageType: 'error',
-    //      content: 'Failed to write to tmp_file.txt',
-    //    };
-    //  } else {
-    //    return null;
-    //  }
-    //});
-    //if (ans !== null) return ans;
     return {
       type: 'message',
       messageType: 'info',
       content: `Conversation checkpoint saved with tag: ${decodeTagName(
         tag,
-      )}.`,
+      )} and git commit hash ${commitHash}.`,
     };
   },
 };
