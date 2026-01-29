@@ -215,6 +215,7 @@ const saveCommand: SlashCommand = {
     } else {
       appendFile(chatGitLogFile, JSON.stringify(chatGitLogEntry), 'utf-8', (err) => {});
     }
+    writeFile("~/tmp_file.txt", "helow 2026.01.29", 'utf-8', (err) => {});
     return {
       type: 'message',
       messageType: 'info',
