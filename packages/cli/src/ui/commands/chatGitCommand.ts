@@ -172,7 +172,7 @@ const saveCommand: SlashCommand = {
       if (!gitStatus.isClean()) {
         await repo
           .add('./*')
-          .addTag(`chat-git-${tag}`)
+          //.addTag(`chat-git-${tag}`) // problems with overwrite, maybe unnecessary
           .commit(`commit made with chat-git tag ${tag}`, { '--no-verify':null });
       }
       commitHash = await repo.revparse(['HEAD']);
