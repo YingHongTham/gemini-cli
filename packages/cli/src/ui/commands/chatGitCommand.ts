@@ -32,8 +32,8 @@ import { convertToRestPayload } from '@google/gemini-cli-core';
 import { simpleGit } from 'simple-git';
 
 // TODO chnage to something not hard-coded
-const geminiDir = '.gemini';
-const chatGitLogFile = path.join(geminiDir, 'chatGitTags.json');
+const projectGeminiDir = '.gemini';
+const chatGitLogFile = path.join(projectGeminiDir, 'chatGitTags.json');
 
 const getSavedChatGitTags = async (
   context: CommandContext,
@@ -60,7 +60,7 @@ const getSavedChatGitTags = async (
     const chatDetails: ChatDetail[] = [];
 
     for (const entry of chatGitLog) {
-      const filePath = path.join(geminiDir, `${file_head}-${entry.tag}.${file_tail}`);
+      const filePath = path.join(geminiDir, file_head + entry.tag + file_tail);
       const stats = await fsPromises.stat(filePath);
       chatDetails.push({
         name: decodeTagName(entry.tag),
@@ -77,6 +77,7 @@ const getSavedChatGitTags = async (
     return chatDetails;
   } catch (_err) {
     return [];
+    //return [{ name : `${_err}`, mtime : '' }];
   }
 };
 
@@ -185,7 +186,7 @@ const saveCommand: SlashCommand = {
       return {
         type: 'message',
         messageType: 'error',
-        content: `Git branch, checkout, add, or commit failed, ${error}`,
+        content: `Failed git add or commit, ${error}`,
       };
     }
 
@@ -242,7 +243,7 @@ const resumeCommand: SlashCommand = {
       return {
         type: 'message',
         messageType: 'error',
-        content: 'Missing tag. Usage: /chat resume <tag>',
+        content: 'Missing tag. Usage: /chat-git resume <tag>',
       };
     }
 
@@ -259,6 +260,32 @@ const resumeCommand: SlashCommand = {
       };
     }
 
+    let chatGitLogStr, commitHash;
+    try {
+      chatGitLogStr = readFileSync(chatGitLogFile, 'utf-8');
+      const chatGitLog = JSON.parse(chatGitLogStr);
+      const tagFound = chatGitLog.find((entry : { commitHash : string; tag : string }) => {
+        if (entry.tag == tag) {
+          commitHash = entry.commitHash;
+          return true;
+        }
+        return false;
+      });
+      if (!tagFound) {
+        return {
+          type: 'message',
+          messageType: 'error',
+          content: `No git commit associated with tag: ${decodeTagName(tag)}.`,
+        };
+      }
+    } catch (err) {
+      return {
+        type: 'message',
+        messageType: 'error',
+        content: `Error reading from chat-git log file ${chatGitLogFile}, ${err}`,
+      };
+    };
+
     const currentAuthType = config?.getContentGeneratorConfig()?.authType;
     if (
       checkpoint.authType &&
@@ -269,6 +296,50 @@ const resumeCommand: SlashCommand = {
         type: 'message',
         messageType: 'error',
         content: `Cannot resume chat. It was saved with a different authentication method (${checkpoint.authType}) than the current one (${currentAuthType}).`,
+      };
+    }
+
+    // check git stuff, all other checks done, perform git checkout here
+    const repo = simpleGit(process.cwd());
+    try {
+      const isRepoDefined = await repo.checkIsRepo();
+      if (!isRepoDefined) {
+        return {
+          type: 'message',
+          messageType: 'error',
+          content: 'Current working directory is not git repo. Unable to proceed with chat-git.',
+        };
+      }
+    } catch (error) {
+      return {
+        type: 'message',
+        messageType: 'error',
+        content: 'Current working directory is not git repo or checkIsRepo failed. Unable to proceed with chat-git.',
+      };
+    }
+    try {
+      const gitStatus = await repo.status(['--porcelain']);
+      if (!gitStatus.isClean()) {
+        return {
+          type: 'message',
+          messageType: 'error',
+          content: 'Git repo is not clean, unable to checkout.',
+        };
+      }
+    } catch (error) {
+      return {
+        type: 'message',
+        messageType: 'error',
+        content: `Failed checking git repo status, ${error}`,
+      };
+    }
+    try {
+      await repo.checkout(commitHash);
+    } catch (error) {
+      return {
+        type: 'message',
+        messageType: 'error',
+        content: `Failed git checkout ${commitHash}, ${error}`,
       };
     }
 
