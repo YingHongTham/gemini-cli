@@ -39,27 +39,33 @@ const getSavedChatGitTags = async (
   context: CommandContext,
   mtSortDesc: boolean,
 ): Promise<ChatDetail[]> => {
+  let chatGitLogStr;
+  try {
+    chatGitLogStr = readFileSync(chatGitLogFile, 'utf-8');
+  } catch (err) {
+    // TODO ideally log the read error, as file may actually exist
+    return [];
+  };
+  const chatGitLog = JSON.parse(chatGitLogStr);
+
   const cfg = context.services.config;
   const geminiDir = cfg?.storage?.getProjectTempDir();
   if (!geminiDir) {
     return [];
   }
   try {
-    const file_head = 'chatGit-';
+    const file_head = 'checkpoint-';
     const file_tail = '.json';
-    const files = await fsPromises.readdir(geminiDir);
+    //const files = await fsPromises.readdir(geminiDir);
     const chatDetails: ChatDetail[] = [];
 
-    for (const file of files) {
-      if (file.startsWith(file_head) && file.endsWith(file_tail)) {
-        const filePath = path.join(geminiDir, file);
-        const stats = await fsPromises.stat(filePath);
-        const tagName = file.slice(file_head.length, -file_tail.length);
-        chatDetails.push({
-          name: decodeTagName(tagName),
-          mtime: stats.mtime.toISOString(),
-        });
-      }
+    for (const entry of chatGitLog) {
+      const filePath = path.join(geminiDir, `${file_head}-${entry.tag}.${file_tail}`);
+      const stats = await fsPromises.stat(filePath);
+      chatDetails.push({
+        name: decodeTagName(entry.tag),
+        mtime: stats.mtime.toISOString(),
+      });
     }
 
     chatDetails.sort((a, b) =>
@@ -165,7 +171,6 @@ const saveCommand: SlashCommand = {
       };
     }
 
-
     let commitHash;
     try {
       const gitStatus = await repo.status(['--porcelain']);
@@ -187,8 +192,8 @@ const saveCommand: SlashCommand = {
     const authType = config?.getContentGeneratorConfig()?.authType;
     await logger.saveCheckpoint({ history, authType }, tag);
     const chatGitLogEntry = {
-      //sessionId: logger.sessionId,
-      //timeStamp: logger.timestamp,
+      //sessionId: logger.sessionId, // would be nice to add
+      //timeStamp: logger.timestamp, // but these are private attributes
       commitHash: commitHash,
       tag: tag,
     };
