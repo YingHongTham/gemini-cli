@@ -27,8 +27,6 @@ import type {
   ChatDetail,
 } from '../types.js';
 import { MessageType } from '../types.js';
-import { exportHistoryToFile } from '../utils/historyExportUtils.js';
-import { convertToRestPayload } from '@google/gemini-cli-core';
 import { simpleGit } from 'simple-git';
 
 // TODO chnage to something not hard-coded
@@ -381,7 +379,7 @@ const resumeCommand: SlashCommand = {
 
 const deleteCommand: SlashCommand = {
   name: 'delete',
-  description: 'Delete a conversation checkpoint. Usage: /chat delete <tag>',
+  description: 'Delete a conversation checkpoint (git snapshot remains). Usage: /chat-git delete <tag>',
   kind: CommandKind.BUILT_IN,
   autoExecute: true,
   action: async (context, args): Promise<MessageActionReturn> => {
@@ -390,7 +388,31 @@ const deleteCommand: SlashCommand = {
       return {
         type: 'message',
         messageType: 'error',
-        content: 'Missing tag. Usage: /chat delete <tag>',
+        content: 'Missing tag. Usage: /chat-git delete <tag>',
+      };
+    }
+
+    // delete entry from chatGitLogFile first, as it's still possible to recover
+    // the chat with given tag will still be there
+    try {
+      const chatGitLog = JSON.parse(readFileSync(chatGitLogFile, 'utf-8'));
+      const tagIndex = chatGitLog.findIndex((entry : { commitHash : string; tag : string }) => {
+        return entry.tag == tag;
+      });
+      if (!tagIndex) {
+        return {
+          type: 'message',
+          messageType: 'error',
+          content: `Tag not associated with git snapshot, ${tag}`,
+        };
+      }
+      chatGitLog.splice(tagIndex, 1);
+      writeFileSync(chatGitLogFile, JSON.stringify(chatGitLog), 'utf-8');
+    } catch (error) {
+      return {
+        type: 'message',
+        messageType: 'error',
+        content: `Reading or writing to ${chatGitLogFile} failed, ${error}`,
       };
     }
 
@@ -420,108 +442,6 @@ const deleteCommand: SlashCommand = {
   },
 };
 
-const shareCommand: SlashCommand = {
-  name: 'share',
-  description:
-    'Share the current conversation to a markdown or json file. Usage: /chat share <file>',
-  kind: CommandKind.BUILT_IN,
-  autoExecute: false,
-  action: async (context, args): Promise<MessageActionReturn> => {
-    let filePathArg = args.trim();
-    if (!filePathArg) {
-      filePathArg = `gemini-conversation-${Date.now()}.json`;
-    }
-
-    const filePath = path.resolve(filePathArg);
-    const extension = path.extname(filePath);
-    if (extension !== '.md' && extension !== '.json') {
-      return {
-        type: 'message',
-        messageType: 'error',
-        content: 'Invalid file format. Only .md and .json are supported.',
-      };
-    }
-
-    const chat = context.services.config?.getGeminiClient()?.getChat();
-    if (!chat) {
-      return {
-        type: 'message',
-        messageType: 'error',
-        content: 'No chat client available to share conversation.',
-      };
-    }
-
-    const history = chat.getHistory();
-
-    // An empty conversation has a hidden message that sets up the context for
-    // the chat. Thus, to check whether a conversation has been started, we
-    // can't check for length 0.
-    if (history.length <= INITIAL_HISTORY_LENGTH) {
-      return {
-        type: 'message',
-        messageType: 'info',
-        content: 'No conversation found to share.',
-      };
-    }
-
-    try {
-      await exportHistoryToFile({ history, filePath });
-      return {
-        type: 'message',
-        messageType: 'info',
-        content: `Conversation shared to ${filePath}`,
-      };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      return {
-        type: 'message',
-        messageType: 'error',
-        content: `Error sharing conversation: ${errorMessage}`,
-      };
-    }
-  },
-};
-
-export const debugCommand: SlashCommand = {
-  name: 'debug',
-  description: 'Export the most recent API request as a JSON payload',
-  kind: CommandKind.BUILT_IN,
-  autoExecute: true,
-  action: async (context): Promise<MessageActionReturn> => {
-    const req = context.services.config?.getLatestApiRequest();
-    if (!req) {
-      return {
-        type: 'message',
-        messageType: 'error',
-        content: 'No recent API request found to export.',
-      };
-    }
-
-    const restPayload = convertToRestPayload(req);
-    const filename = `gcli-request-${Date.now()}.json`;
-    const filePath = path.join(process.cwd(), filename);
-
-    try {
-      await fsPromises.writeFile(
-        filePath,
-        JSON.stringify(restPayload, null, 2),
-      );
-      return {
-        type: 'message',
-        messageType: 'info',
-        content: `Debug API request saved to ${filename}`,
-      };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      return {
-        type: 'message',
-        messageType: 'error',
-        content: `Error saving debug request: ${errorMessage}`,
-      };
-    }
-  },
-};
-
 export const chatGitCommand: SlashCommand = {
   name: 'chat-git',
   description: 'Manage conversation history together with git commits',
@@ -532,6 +452,5 @@ export const chatGitCommand: SlashCommand = {
     saveCommand,
     resumeCommand,
     deleteCommand,
-    shareCommand,
   ],
 };
