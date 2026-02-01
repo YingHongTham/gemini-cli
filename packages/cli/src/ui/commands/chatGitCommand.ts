@@ -38,12 +38,15 @@ const getSavedChatGitTags = async (
   mtSortDesc: boolean,
 ): Promise<ChatDetail[]> => {
   let chatGitLogStr;
+  if (!existsSync(chatGitLogFile)) {
+    return [];
+  }
   try {
     chatGitLogStr = readFileSync(chatGitLogFile, 'utf-8');
   } catch (err) {
     // TODO ideally log the read error, as file may actually exist
     return [];
-  };
+  }
   const chatGitLog = JSON.parse(chatGitLogStr);
 
   const cfg = context.services.config;
