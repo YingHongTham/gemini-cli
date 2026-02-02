@@ -19,15 +19,15 @@ import type { HistoryItemWithoutId } from '../types.js';
 //import type { SimpleGit } from 'simple-git';
 
 vi.mock('fs/promises', () => ({
-    stat: vi.fn(),
-    readdir: vi.fn().mockResolvedValue([] as string[]),
-  }));
+  stat: vi.fn(),
+  readdir: vi.fn().mockResolvedValue([] as string[]),
+}));
 
 vi.mock('fs', () => ({
-    existsSync: vi.fn(),
-    readFileSync: vi.fn(),
-    writeFileSync: vi.fn(),
-  }));
+  existsSync: vi.fn(),
+  readFileSync: vi.fn(),
+  writeFileSync: vi.fn(),
+}));
 
 // Mock simple-git
 const mockGit = {
@@ -41,8 +41,8 @@ const mockGit = {
 //} as unknown as SimpleGit;
 
 vi.mock('simple-git', () => ({
-    simpleGit: vi.fn(() => mockGit),
-  }));
+  simpleGit: vi.fn(() => mockGit),
+}));
 
 //vi.mock('simple-git', () => ({
 //  simpleGit: vi.fn(() => mockGit),
@@ -168,15 +168,13 @@ describe('chatGitCommand', () => {
       ];
       mockFs.existsSync.mockReturnValue(true);
       mockFs.readFileSync.mockReturnValue(JSON.stringify(mockChatGitLog));
-      mockFsPromises.stat.mockImplementation(
-         
-        async (path: string): Promise<Stats> => {
-          if (path.includes('test1')) {
-            return { mtime: date1 } as Stats;
-          }
-          return { mtime: date2 } as Stats;
-        },
-      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockFs.stat.mockImplementation(async (path: any): Promise<Stats> => {
+        if (path.includes('test1')) {
+          return { mtime: date1 } as Stats;
+        }
+        return { mtime: date2 } as Stats;
+      });
 
       await listCommand?.action?.(mockContext, '');
 
@@ -614,7 +612,6 @@ describe('chatGitCommand', () => {
         mockFs.readFileSync.mockReturnValue(JSON.stringify(mockChatGitLog));
         // Mock stat calls for the checkpoints that would be checked by getSavedChatGitTags
         mockFsPromises.stat.mockImplementation(
-           
           async (path: string): Promise<Stats> => {
             if (path.includes('alpha')) {
               return { mtime: date1 } as Stats;
@@ -640,7 +637,6 @@ describe('chatGitCommand', () => {
         // Mock stat calls for the checkpoints that would be checked by getSavedChatGitTags
         //mockFsPromises.stat.mockImplementation(async (path: string) => {
         mockFsPromises.stat.mockImplementation(
-           
           async (path: string): Promise<Stats> => {
             if (path.includes('test1')) {
               return { mtime: date1 } as Stats;
@@ -747,7 +743,6 @@ describe('chatGitCommand', () => {
         // Mock stat calls for the checkpoints that would be checked by getSavedChatGitTags
         //mockFsPromises.stat.mockImplementation(async (path: string) => {
         mockFsPromises.stat.mockImplementation(
-           
           async (path: string): Promise<Stats> => {
             if (path.includes('alpha')) {
               return { mtime: date1 } as Stats;
