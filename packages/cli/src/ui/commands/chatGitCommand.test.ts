@@ -611,14 +611,13 @@ describe('chatGitCommand', () => {
         mockFs.existsSync.mockReturnValue(true);
         mockFs.readFileSync.mockReturnValue(JSON.stringify(mockChatGitLog));
         // Mock stat calls for the checkpoints that would be checked by getSavedChatGitTags
-        mockFsPromises.stat.mockImplementation(
-          async (path: string): Promise<Stats> => {
-            if (path.includes('alpha')) {
-              return { mtime: date1 } as Stats;
-            }
-            return { mtime: date2 } as Stats;
-          },
-        );
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        mockFs.stat.mockImplementation(async (path: any): Promise<Stats> => {
+          if (path.includes('alpha')) {
+            return { mtime: date1 } as Stats;
+          }
+          return { mtime: date2 } as Stats;
+        });
 
         const result = await resumeCommand?.completion?.(mockContext, 'b');
 
