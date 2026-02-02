@@ -9,15 +9,15 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { SlashCommand, CommandContext } from './types.js';
 import { createMockCommandContext } from '../../test-utils/mockCommandContext.js';
 import type { Content } from '@google/genai';
-import { AuthType, INITIAL_HISTORY_LENGTH, type GeminiClient } from '@google/gemini-cli-core';
+import { AuthType, type GeminiClient } from '@google/gemini-cli-core';
 
 import * as fsPromises from 'node:fs/promises';
 import * as fs from 'node:fs';
 import { chatGitCommand } from './chatGitCommand.js';
 import type { Stats } from 'node:fs';
 import type { HistoryItemWithoutId } from '../types.js';
-import path from 'node:path';
-import { simpleGit, SimpleGit } from 'simple-git';
+//import path from 'node:path';
+import type { SimpleGit } from 'simple-git';
 
 vi.mock('node:fs/promises', () => ({
   stat: vi.fn(),
@@ -49,7 +49,7 @@ const chatGitLogFile = '.gemini/chatGitTags.json'; // Assuming this path based o
 describe('chatGitCommand', () => {
   const mockFsPromises = vi.mocked(fsPromises);
   const mockFs = vi.mocked(fs);
-  const mockSimpleGit = vi.mocked(simpleGit);
+  //const mockSimpleGit = vi.mocked(simpleGit);
 
   let mockContext: CommandContext;
   let mockGetChat: ReturnType<typeof vi.fn>;
@@ -135,7 +135,7 @@ describe('chatGitCommand', () => {
 
     it('should return an empty list if chatGitLogFile does not exist', async () => {
       mockFs.existsSync.mockReturnValue(false);
-      await listCommand.action?.(mockContext, '');
+      await listCommand?.action?.(mockContext, '');
       expect(mockContext.ui.addItem).toHaveBeenCalledWith({
         type: 'chat_list',
         chats: [],
@@ -158,7 +158,7 @@ describe('chatGitCommand', () => {
         return { mtime: date2 } as Stats;
       });
 
-      await listCommand.action?.(mockContext, '');
+      await listCommand?.action?.(mockContext, '');
 
       expect(mockContext.ui.addItem).toHaveBeenCalledWith({
         type: 'chat_list',
@@ -175,7 +175,7 @@ describe('chatGitCommand', () => {
         throw new Error('Read error');
       });
 
-      await listCommand.action?.(mockContext, '');
+      await listCommand?.action?.(mockContext, '');
       expect(mockContext.ui.addItem).toHaveBeenCalledWith({
         type: 'chat_list',
         chats: [],
@@ -195,17 +195,17 @@ describe('chatGitCommand', () => {
     });
 
     it('should return an error if tag is missing', async () => {
-      const result = await saveCommand.action?.(mockContext, '  ');
+      const result = await saveCommand?.action?.(mockContext, '  ');
       expect(result).toEqual({
         type: 'message',
         messageType: 'error',
-        content: 'Missing tag. Usage: /chat save <tag>',
+        content: 'Missing tag. Usage: /chat-git save <tag>',
       });
     });
 
     it('should return an error if current directory is not a git repo', async () => {
       mockGit.checkIsRepo.mockResolvedValue(false);
-      const result = await saveCommand.action?.(mockContext, tag);
+      const result = await saveCommand?.action?.(mockContext, tag);
       expect(result).toEqual({
         type: 'message',
         messageType: 'error',
@@ -216,7 +216,7 @@ describe('chatGitCommand', () => {
 
     it('should return an error if checkIsRepo fails', async () => {
       mockGit.checkIsRepo.mockRejectedValue(new Error('Git error'));
-      const result = await saveCommand.action?.(mockContext, tag);
+      const result = await saveCommand?.action?.(mockContext, tag);
       expect(result).toEqual({
         type: 'message',
         messageType: 'error',
@@ -233,7 +233,7 @@ describe('chatGitCommand', () => {
         args: tag,
       };
 
-      const result = await saveCommand.action?.(mockContext, tag);
+      const result = await saveCommand?.action?.(mockContext, tag);
 
       expect(mockCheckpointExists).toHaveBeenCalledWith(tag);
       expect(mockSaveCheckpoint).not.toHaveBeenCalled();
@@ -255,7 +255,7 @@ describe('chatGitCommand', () => {
       // Mock isClean to return false so a commit is made
       mockGit.status.mockResolvedValue({ isClean: () => false });
 
-      const result = await saveCommand.action?.(mockContext, tag);
+      const result = await saveCommand?.action?.(mockContext, tag);
 
       expect(mockCheckpointExists).not.toHaveBeenCalled(); // Should skip existence check
       expect(mockGit.add).toHaveBeenCalledWith('./*');
@@ -272,8 +272,7 @@ describe('chatGitCommand', () => {
       expect(result).toEqual({
         type: 'message',
         messageType: 'info',
-        content:
-          `Conversation checkpoint saved with tag: ${tag} and git commit hash test-commit-hash.`,
+        content: `Conversation checkpoint saved with tag: ${tag} and git commit hash test-commit-hash.`,
       });
     });
 
@@ -288,7 +287,7 @@ describe('chatGitCommand', () => {
       // Mock isClean to return true
       mockGit.status.mockResolvedValue({ isClean: () => true });
 
-      await saveCommand.action?.(mockContext, tag);
+      await saveCommand?.action?.(mockContext, tag);
 
       expect(mockGit.add).not.toHaveBeenCalled();
       expect(mockGit.commit).not.toHaveBeenCalled();
@@ -304,7 +303,7 @@ describe('chatGitCommand', () => {
       mockGit.status.mockResolvedValue({ isClean: () => false }); // Force commit
       mockGit.commit.mockRejectedValue(new Error('Commit failed'));
 
-      const result = await saveCommand.action?.(mockContext, tag);
+      const result = await saveCommand?.action?.(mockContext, tag);
 
       expect(result).toEqual({
         type: 'message',
@@ -323,7 +322,7 @@ describe('chatGitCommand', () => {
         throw new Error('Write file failed');
       });
 
-      const result = await saveCommand.action?.(mockContext, tag);
+      const result = await saveCommand?.action?.(mockContext, tag);
 
       expect(result).toEqual({
         type: 'message',
@@ -334,18 +333,20 @@ describe('chatGitCommand', () => {
 
     it('should inform if conversation history is empty or only contains system context', async () => {
       mockGetHistory.mockReturnValue([]);
-      let result = await saveCommand.action?.(mockContext, tag);
+      let result = await saveCommand?.action?.(mockContext, tag);
       expect(result).toEqual({
         type: 'message',
         messageType: 'info',
         content: 'No conversation found to save.',
       });
 
-      mockGetHistory.mockReturnValue([{
-        role: 'user',
-        parts: [{ text: 'context for our chat' }],
-      }]);
-      result = await saveCommand.action?.(mockContext, tag);
+      mockGetHistory.mockReturnValue([
+        {
+          role: 'user',
+          parts: [{ text: 'context for our chat' }],
+        },
+      ]);
+      result = await saveCommand?.action?.(mockContext, tag);
       expect(result).toEqual({
         type: 'message',
         messageType: 'info',
@@ -357,7 +358,7 @@ describe('chatGitCommand', () => {
         { role: 'model', parts: [{ text: 'Got it. Thanks for the context!' }] },
         { role: 'user', parts: [{ text: 'Hello, how are you?' }] },
       ]);
-      result = await saveCommand.action?.(mockContext, tag);
+      result = await saveCommand?.action?.(mockContext, tag);
       expect(result).toEqual({
         type: 'message',
         messageType: 'info',
@@ -381,7 +382,7 @@ describe('chatGitCommand', () => {
       mockFs.existsSync.mockReturnValue(true);
       mockFs.readFileSync.mockReturnValue(existingLog);
 
-      await saveCommand.action?.(mockContext, tag);
+      await saveCommand?.action?.(mockContext, tag);
 
       const expectedLog = JSON.stringify([
         { tag: 'my-tag', commitHash: 'new-commit-hash' },
@@ -396,7 +397,7 @@ describe('chatGitCommand', () => {
 
   describe('resume subcommand', () => {
     const goodTag = 'good-tag';
-    const badTag = 'bad-tag';
+    //const badTag = 'bad-tag';
     const goodCommitHash = '1234567890abcdef';
 
     let resumeCommand: SlashCommand;
@@ -405,13 +406,13 @@ describe('chatGitCommand', () => {
 
       // Default mock chatGitLogFile
       mockFs.existsSync.mockReturnValue(true);
-      mockFs.readFileSync.mockReturnValue(JSON.stringify([
-        { tag: goodTag, commitHash: goodCommitHash },
-      ]));
+      mockFs.readFileSync.mockReturnValue(
+        JSON.stringify([{ tag: goodTag, commitHash: goodCommitHash }]),
+      );
     });
 
     it('should return an error if tag is missing', async () => {
-      const result = await resumeCommand.action?.(mockContext, '');
+      const result = await resumeCommand?.action?.(mockContext, '');
       expect(result).toEqual({
         type: 'message',
         messageType: 'error',
@@ -422,7 +423,7 @@ describe('chatGitCommand', () => {
     it('should inform if checkpoint is not found', async () => {
       mockLoadCheckpoint.mockResolvedValue({ history: [] }); // Simulate checkpoint not found
 
-      const result = await resumeCommand.action?.(mockContext, goodTag);
+      const result = await resumeCommand?.action?.(mockContext, goodTag);
 
       expect(result).toEqual({
         type: 'message',
@@ -432,15 +433,15 @@ describe('chatGitCommand', () => {
     });
 
     it('should return an error if no git commit associated with tag', async () => {
-      mockFs.readFileSync.mockReturnValue(JSON.stringify([
-        { tag: 'other-tag', commitHash: 'another-hash' },
-      ]));
+      mockFs.readFileSync.mockReturnValue(
+        JSON.stringify([{ tag: 'other-tag', commitHash: 'another-hash' }]),
+      );
       mockLoadCheckpoint.mockResolvedValue({
         history: [{ role: 'user', parts: [{ text: 'test' }] }],
         authType: AuthType.LOGIN_WITH_GOOGLE,
       });
 
-      const result = await resumeCommand.action?.(mockContext, goodTag);
+      const result = await resumeCommand?.action?.(mockContext, goodTag);
 
       expect(result).toEqual({
         type: 'message',
@@ -458,7 +459,7 @@ describe('chatGitCommand', () => {
         authType: AuthType.LOGIN_WITH_GOOGLE,
       });
 
-      const result = await resumeCommand.action?.(mockContext, goodTag);
+      const result = await resumeCommand?.action?.(mockContext, goodTag);
 
       expect(result).toEqual({
         type: 'message',
@@ -478,13 +479,12 @@ describe('chatGitCommand', () => {
         authType: AuthType.USE_GEMINI,
       });
 
-      const result = await resumeCommand.action?.(mockContext, goodTag);
+      const result = await resumeCommand?.action?.(mockContext, goodTag);
 
       expect(result).toEqual({
         type: 'message',
         messageType: 'error',
-        content:
-          `Cannot resume chat. It was saved with a different authentication method (${AuthType.USE_GEMINI}) than the current one (${AuthType.LOGIN_WITH_GOOGLE}).`,
+        content: `Cannot resume chat. It was saved with a different authentication method (${AuthType.USE_GEMINI}) than the current one (${AuthType.LOGIN_WITH_GOOGLE}).`,
       });
     });
 
@@ -495,7 +495,7 @@ describe('chatGitCommand', () => {
         authType: AuthType.LOGIN_WITH_GOOGLE,
       });
 
-      const result = await resumeCommand.action?.(mockContext, goodTag);
+      const result = await resumeCommand?.action?.(mockContext, goodTag);
 
       expect(result).toEqual({
         type: 'message',
@@ -512,7 +512,7 @@ describe('chatGitCommand', () => {
         authType: AuthType.LOGIN_WITH_GOOGLE,
       });
 
-      const result = await resumeCommand.action?.(mockContext, goodTag);
+      const result = await resumeCommand?.action?.(mockContext, goodTag);
 
       expect(result).toEqual({
         type: 'message',
@@ -528,7 +528,7 @@ describe('chatGitCommand', () => {
         authType: AuthType.LOGIN_WITH_GOOGLE,
       });
 
-      const result = await resumeCommand.action?.(mockContext, goodTag);
+      const result = await resumeCommand?.action?.(mockContext, goodTag);
 
       expect(result).toEqual({
         type: 'message',
@@ -548,7 +548,7 @@ describe('chatGitCommand', () => {
         authType: AuthType.LOGIN_WITH_GOOGLE,
       });
 
-      const result = await resumeCommand.action?.(mockContext, goodTag);
+      const result = await resumeCommand?.action?.(mockContext, goodTag);
 
       expect(mockGit.checkout).toHaveBeenCalledWith(goodCommitHash);
       expect(result).toEqual({
@@ -569,7 +569,7 @@ describe('chatGitCommand', () => {
       ];
       mockLoadCheckpoint.mockResolvedValue({ history: conversation }); // No authType
 
-      const result = await resumeCommand.action?.(mockContext, goodTag);
+      const result = await resumeCommand?.action?.(mockContext, goodTag);
 
       expect(mockGit.checkout).toHaveBeenCalledWith(goodCommitHash);
       expect(result).toEqual({
@@ -594,13 +594,13 @@ describe('chatGitCommand', () => {
         mockFs.readFileSync.mockReturnValue(JSON.stringify(mockChatGitLog));
         // Mock stat calls for the checkpoints that would be checked by getSavedChatGitTags
         mockFsPromises.stat.mockImplementation(async (path: string) => {
-            if (path.includes('alpha')) {
-              return { mtime: date1 } as Stats;
-            }
-            return { mtime: date2 } as Stats;
-          });
+          if (path.includes('alpha')) {
+            return { mtime: date1 } as Stats;
+          }
+          return { mtime: date2 } as Stats;
+        });
 
-        const result = await resumeCommand.completion?.(mockContext, 'b');
+        const result = await resumeCommand?.completion?.(mockContext, 'b');
 
         expect(result).toEqual(['beta']);
       });
@@ -616,13 +616,13 @@ describe('chatGitCommand', () => {
         mockFs.readFileSync.mockReturnValue(JSON.stringify(mockChatGitLog));
         // Mock stat calls for the checkpoints that would be checked by getSavedChatGitTags
         mockFsPromises.stat.mockImplementation(async (path: string) => {
-            if (path.includes('test1')) {
-              return { mtime: date1 } as Stats;
-            }
-            return { mtime: date2 } as Stats;
-          });
+          if (path.includes('test1')) {
+            return { mtime: date1 } as Stats;
+          }
+          return { mtime: date2 } as Stats;
+        });
 
-        const result = await resumeCommand.completion?.(mockContext, '');
+        const result = await resumeCommand?.completion?.(mockContext, '');
         expect(result).toEqual(['test2', 'test1']);
       });
     });
@@ -637,13 +637,13 @@ describe('chatGitCommand', () => {
       deleteCommand = getSubCommand('delete');
       // Default mock chatGitLogFile
       mockFs.existsSync.mockReturnValue(true);
-      mockFs.readFileSync.mockReturnValue(JSON.stringify([
-        { tag: tag, commitHash: commitHash },
-      ]));
+      mockFs.readFileSync.mockReturnValue(
+        JSON.stringify([{ tag, commitHash }]),
+      );
     });
 
     it('should return an error if tag is missing', async () => {
-      const result = await deleteCommand.action?.(mockContext, ' ');
+      const result = await deleteCommand?.action?.(mockContext, ' ');
       expect(result).toEqual({
         type: 'message',
         messageType: 'error',
@@ -652,10 +652,10 @@ describe('chatGitCommand', () => {
     });
 
     it('should return an error if tag is not associated with git snapshot', async () => {
-      mockFs.readFileSync.mockReturnValue(JSON.stringify([
-        { tag: 'other-tag', commitHash: 'abc' },
-      ]));
-      const result = await deleteCommand.action?.(mockContext, tag);
+      mockFs.readFileSync.mockReturnValue(
+        JSON.stringify([{ tag: 'other-tag', commitHash: 'abc' }]),
+      );
+      const result = await deleteCommand?.action?.(mockContext, tag);
       expect(result).toEqual({
         type: 'message',
         messageType: 'error',
@@ -667,7 +667,7 @@ describe('chatGitCommand', () => {
       mockFs.readFileSync.mockImplementation(() => {
         throw new Error('Read error');
       });
-      const result = await deleteCommand.action?.(mockContext, tag);
+      const result = await deleteCommand?.action?.(mockContext, tag);
       expect(result).toEqual({
         type: 'message',
         messageType: 'error',
@@ -677,7 +677,7 @@ describe('chatGitCommand', () => {
 
     it('should return an error if checkpoint is not found', async () => {
       mockDeleteCheckpoint.mockResolvedValue(false);
-      const result = await deleteCommand.action?.(mockContext, tag);
+      const result = await deleteCommand?.action?.(mockContext, tag);
       expect(result).toEqual({
         type: 'message',
         messageType: 'error',
@@ -692,7 +692,7 @@ describe('chatGitCommand', () => {
       ];
       mockFs.readFileSync.mockReturnValue(JSON.stringify(initialChatGitLog));
 
-      const result = await deleteCommand.action?.(mockContext, tag);
+      const result = await deleteCommand?.action?.(mockContext, tag);
 
       expect(mockFs.writeFileSync).toHaveBeenCalledWith(
         chatGitLogFile,
@@ -719,13 +719,13 @@ describe('chatGitCommand', () => {
         mockFs.readFileSync.mockReturnValue(JSON.stringify(mockChatGitLog));
         // Mock stat calls for the checkpoints that would be checked by getSavedChatGitTags
         mockFsPromises.stat.mockImplementation(async (path: string) => {
-            if (path.includes('alpha')) {
-              return { mtime: date1 } as Stats;
-            }
-            return { mtime: date2 } as Stats;
-          });
+          if (path.includes('alpha')) {
+            return { mtime: date1 } as Stats;
+          }
+          return { mtime: date2 } as Stats;
+        });
 
-        const result = await deleteCommand.completion?.(mockContext, 'a');
+        const result = await deleteCommand?.completion?.(mockContext, 'a');
 
         expect(result).toEqual(['alpha']);
       });
