@@ -10,8 +10,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    //include: ['scripts/tests/**/*.test.{js,ts}'],
-    include: ['packages/cli/src/ui/commands/chatGitCommand.test.ts'],
+    include: ['scripts/tests/**/*.test.{js,ts}'],
     setupFiles: ['scripts/tests/test-setup.ts'],
     coverage: {
       provider: 'v8',
