@@ -16,19 +16,18 @@ import * as fs from 'node:fs';
 import { chatGitCommand } from './chatGitCommand.js';
 import type { Stats } from 'node:fs';
 import type { HistoryItemWithoutId } from '../types.js';
-//import path from 'node:path';
-import type { SimpleGit } from 'simple-git';
+//import type { SimpleGit } from 'simple-git';
 
-vi.mock('node:fs/promises', () => ({
-  stat: vi.fn(),
-  readdir: vi.fn().mockResolvedValue([] as string[]),
-}));
+vi.mock('fs/promises', () => ({
+    stat: vi.fn(),
+    readdir: vi.fn().mockResolvedValue([] as string[]),
+  }));
 
-vi.mock('node:fs', () => ({
-  existsSync: vi.fn(),
-  readFileSync: vi.fn(),
-  writeFileSync: vi.fn(),
-}));
+vi.mock('fs', () => ({
+    existsSync: vi.fn(),
+    readFileSync: vi.fn(),
+    writeFileSync: vi.fn(),
+  }));
 
 // Mock simple-git
 const mockGit = {
@@ -38,11 +37,29 @@ const mockGit = {
   commit: vi.fn(() => mockGit), // Make it chainable
   revparse: vi.fn(),
   checkout: vi.fn(),
-} as unknown as SimpleGit;
+};
+//} as unknown as SimpleGit;
 
 vi.mock('simple-git', () => ({
-  simpleGit: vi.fn(() => mockGit),
-}));
+    simpleGit: vi.fn(() => mockGit),
+  }));
+
+//vi.mock('simple-git', () => ({
+//  simpleGit: vi.fn(() => mockGit),
+//}));
+
+//vi.mock('simple-git', () => {
+//  return {
+//    simpleGit: {
+//      checkIsRepo: vi.fn(),
+//      status: vi.fn(),
+//      add: vi.fn(() => mockGit), // Make it chainable
+//      commit: vi.fn(() => mockGit), // Make it chainable
+//      revparse: vi.fn(),
+//      checkout: vi.fn(),
+//    }
+//  }
+//});
 
 const chatGitLogFile = '.gemini/chatGitTags.json'; // Assuming this path based on the source code
 
@@ -151,12 +168,15 @@ describe('chatGitCommand', () => {
       ];
       mockFs.existsSync.mockReturnValue(true);
       mockFs.readFileSync.mockReturnValue(JSON.stringify(mockChatGitLog));
-      mockFsPromises.stat.mockImplementation(async (path: string) => {
-        if (path.includes('test1')) {
-          return { mtime: date1 } as Stats;
-        }
-        return { mtime: date2 } as Stats;
-      });
+      mockFsPromises.stat.mockImplementation(
+         
+        async (path: string): Promise<Stats> => {
+          if (path.includes('test1')) {
+            return { mtime: date1 } as Stats;
+          }
+          return { mtime: date2 } as Stats;
+        },
+      );
 
       await listCommand?.action?.(mockContext, '');
 
@@ -221,7 +241,7 @@ describe('chatGitCommand', () => {
         type: 'message',
         messageType: 'error',
         content:
-          'Current working directory is not git repo or checkIsRepo failed. Unable to proceed with chat-git.',
+          'Current working directory is not git repo or checkIsRepo failed. Unable to proceed with chat-git: Git error',
       });
     });
 
@@ -593,12 +613,15 @@ describe('chatGitCommand', () => {
         mockFs.existsSync.mockReturnValue(true);
         mockFs.readFileSync.mockReturnValue(JSON.stringify(mockChatGitLog));
         // Mock stat calls for the checkpoints that would be checked by getSavedChatGitTags
-        mockFsPromises.stat.mockImplementation(async (path: string) => {
-          if (path.includes('alpha')) {
-            return { mtime: date1 } as Stats;
-          }
-          return { mtime: date2 } as Stats;
-        });
+        mockFsPromises.stat.mockImplementation(
+           
+          async (path: string): Promise<Stats> => {
+            if (path.includes('alpha')) {
+              return { mtime: date1 } as Stats;
+            }
+            return { mtime: date2 } as Stats;
+          },
+        );
 
         const result = await resumeCommand?.completion?.(mockContext, 'b');
 
@@ -615,12 +638,16 @@ describe('chatGitCommand', () => {
         mockFs.existsSync.mockReturnValue(true);
         mockFs.readFileSync.mockReturnValue(JSON.stringify(mockChatGitLog));
         // Mock stat calls for the checkpoints that would be checked by getSavedChatGitTags
-        mockFsPromises.stat.mockImplementation(async (path: string) => {
-          if (path.includes('test1')) {
-            return { mtime: date1 } as Stats;
-          }
-          return { mtime: date2 } as Stats;
-        });
+        //mockFsPromises.stat.mockImplementation(async (path: string) => {
+        mockFsPromises.stat.mockImplementation(
+           
+          async (path: string): Promise<Stats> => {
+            if (path.includes('test1')) {
+              return { mtime: date1 } as Stats;
+            }
+            return { mtime: date2 } as Stats;
+          },
+        );
 
         const result = await resumeCommand?.completion?.(mockContext, '');
         expect(result).toEqual(['test2', 'test1']);
@@ -718,12 +745,16 @@ describe('chatGitCommand', () => {
         mockFs.existsSync.mockReturnValue(true);
         mockFs.readFileSync.mockReturnValue(JSON.stringify(mockChatGitLog));
         // Mock stat calls for the checkpoints that would be checked by getSavedChatGitTags
-        mockFsPromises.stat.mockImplementation(async (path: string) => {
-          if (path.includes('alpha')) {
-            return { mtime: date1 } as Stats;
-          }
-          return { mtime: date2 } as Stats;
-        });
+        //mockFsPromises.stat.mockImplementation(async (path: string) => {
+        mockFsPromises.stat.mockImplementation(
+           
+          async (path: string): Promise<Stats> => {
+            if (path.includes('alpha')) {
+              return { mtime: date1 } as Stats;
+            }
+            return { mtime: date2 } as Stats;
+          },
+        );
 
         const result = await deleteCommand?.completion?.(mockContext, 'a');
 
