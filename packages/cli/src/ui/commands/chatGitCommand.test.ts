@@ -328,7 +328,7 @@ describe('chatGitCommand', () => {
       expect(result).toEqual({
         type: 'message',
         messageType: 'error',
-        content: 'Failed git add or commit, Error: Commit failed',
+        content: 'Failed git add or commit: Commit failed',
       });
     });
 
@@ -347,7 +347,7 @@ describe('chatGitCommand', () => {
       expect(result).toEqual({
         type: 'message',
         messageType: 'error',
-        content: `Reading or writing to ${chatGitLogFile} failed Error: Write file failed`,
+        content: `Reading or writing to ${chatGitLogFile} failed: Write file failed`,
       });
     });
 
@@ -484,7 +484,7 @@ describe('chatGitCommand', () => {
       expect(result).toEqual({
         type: 'message',
         messageType: 'error',
-        content: `Error reading from chat-git log file ${chatGitLogFile}, Error: Read error`,
+        content: `Error reading from chat-git log file ${chatGitLogFile}: Read error`,
       });
     });
 
@@ -553,7 +553,7 @@ describe('chatGitCommand', () => {
       expect(result).toEqual({
         type: 'message',
         messageType: 'error',
-        content: `Failed git checkout ${goodCommitHash}, Error: Checkout failed`,
+        content: `Failed git checkout ${goodCommitHash}: Checkout failed`,
       });
     });
 
@@ -697,7 +697,7 @@ describe('chatGitCommand', () => {
       expect(result).toEqual({
         type: 'message',
         messageType: 'error',
-        content: `Reading or writing to ${chatGitLogFile} failed, Error: Read error`,
+        content: `Reading or writing to ${chatGitLogFile} failed: Read error`,
       });
     });
 
