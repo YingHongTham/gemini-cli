@@ -38,12 +38,14 @@ const getSavedChatGitTags = async (
   mtSortDesc: boolean,
 ): Promise<ChatDetail[]> => {
   let chatGitLogStr;
+  if (!existsSync(chatGitLogFile)) {
+    return [];
+  }
   try {
     chatGitLogStr = readFileSync(chatGitLogFile, 'utf-8');
-  } catch (err) {
-    // TODO ideally log the read error, as file may actually exist
+  } catch (_err) {
     return [];
-  };
+  }
   const chatGitLog = JSON.parse(chatGitLogStr);
 
   const cfg = context.services.config;
@@ -54,7 +56,6 @@ const getSavedChatGitTags = async (
   try {
     const file_head = 'checkpoint-';
     const file_tail = '.json';
-    //const files = await fsPromises.readdir(geminiDir);
     const chatDetails: ChatDetail[] = [];
 
     for (const entry of chatGitLog) {
@@ -75,7 +76,6 @@ const getSavedChatGitTags = async (
     return chatDetails;
   } catch (_err) {
     return [];
-    //return [{ name : `${_err}`, mtime : '' }];
   }
 };
 
@@ -108,7 +108,7 @@ const saveCommand: SlashCommand = {
       return {
         type: 'message',
         messageType: 'error',
-        content: 'Missing tag. Usage: /chat save <tag>',
+        content: 'Missing tag. Usage: /chat-git save <tag>',
       };
     }
 
@@ -122,14 +122,16 @@ const saveCommand: SlashCommand = {
         return {
           type: 'message',
           messageType: 'error',
-          content: 'Current working directory is not git repo. Unable to proceed with chat-git.',
+          content:
+            'Current working directory is not git repo. Unable to proceed with chat-git.',
         };
       }
-    } catch (error) {
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       return {
         type: 'message',
         messageType: 'error',
-        content: 'Current working directory is not git repo or checkIsRepo failed. Unable to proceed with chat-git.',
+        content: `Current working directory is not git repo or checkIsRepo failed. Unable to proceed with chat-git: ${errorMessage}`,
       };
     }
 
@@ -177,14 +179,17 @@ const saveCommand: SlashCommand = {
         await repo
           .add('./*')
           //.addTag(`chat-git-${tag}`) // problems with overwrite, maybe unnecessary
-          .commit(`commit made with chat-git tag ${tag}`, { '--no-verify':null });
+          .commit(`commit made with chat-git tag ${tag}`, {
+            '--no-verify': null,
+          });
       }
       commitHash = await repo.revparse(['HEAD']);
-    } catch (error) {
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       return {
         type: 'message',
         messageType: 'error',
-        content: `Failed git add or commit, ${error}`,
+        content: `Failed git add or commit: ${errorMessage}`,
       };
     }
 
@@ -193,29 +198,32 @@ const saveCommand: SlashCommand = {
     const chatGitLogEntry = {
       //sessionId: logger.sessionId, // would be nice to add
       //timeStamp: logger.timestamp, // but these are private attributes
-      commitHash: commitHash,
-      tag: tag,
+      commitHash,
+      tag,
     };
     try {
       if (!existsSync(chatGitLogFile)) {
         const chatGitLog = [chatGitLogEntry];
         writeFileSync(chatGitLogFile, JSON.stringify(chatGitLog), 'utf-8');
       } else {
-          const chatGitLog = JSON.parse(readFileSync(chatGitLogFile, 'utf-8'));
-          // overwrite entry if tag reused
-          const tagReused = chatGitLog.find((entry : { commitHash : string; tag : string }) => {
-            if (entry.tag != tag) return false;
+        const chatGitLog = JSON.parse(readFileSync(chatGitLogFile, 'utf-8'));
+        // overwrite entry if tag reused
+        const tagReused = chatGitLog.find(
+          (entry: { commitHash: string; tag: string }) => {
+            if (entry.tag !== tag) return false;
             entry.commitHash = commitHash;
             return true;
-          });
-          if (!tagReused) chatGitLog.push(chatGitLogEntry);
-          writeFileSync(chatGitLogFile, JSON.stringify(chatGitLog), 'utf-8');
+          },
+        );
+        if (!tagReused) chatGitLog.push(chatGitLogEntry);
+        writeFileSync(chatGitLogFile, JSON.stringify(chatGitLog), 'utf-8');
       }
-    } catch (error) {
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       return {
         type: 'message',
         messageType: 'error',
-        content: `Reading or writing to ${chatGitLogFile} failed ${error}`,
+        content: `Reading or writing to ${chatGitLogFile} failed: ${errorMessage}`,
       };
     }
     return {
@@ -258,17 +266,19 @@ const resumeCommand: SlashCommand = {
       };
     }
 
-    let chatGitLogStr, commitHash;
+    let chatGitLogStr; let commitHash;
     try {
       chatGitLogStr = readFileSync(chatGitLogFile, 'utf-8');
       const chatGitLog = JSON.parse(chatGitLogStr);
-      const tagFound = chatGitLog.find((entry : { commitHash : string; tag : string }) => {
-        if (entry.tag == tag) {
-          commitHash = entry.commitHash;
-          return true;
-        }
-        return false;
-      });
+      const tagFound = chatGitLog.find(
+        (entry: { commitHash: string; tag: string }) => {
+          if (entry.tag === tag) {
+            commitHash = entry.commitHash;
+            return true;
+          }
+          return false;
+        },
+      );
       if (!tagFound) {
         return {
           type: 'message',
@@ -277,12 +287,13 @@ const resumeCommand: SlashCommand = {
         };
       }
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       return {
         type: 'message',
         messageType: 'error',
-        content: `Error reading from chat-git log file ${chatGitLogFile}, ${err}`,
+        content: `Error reading from chat-git log file ${chatGitLogFile}: ${errorMessage}`,
       };
-    };
+    }
 
     const currentAuthType = config?.getContentGeneratorConfig()?.authType;
     if (
@@ -305,14 +316,16 @@ const resumeCommand: SlashCommand = {
         return {
           type: 'message',
           messageType: 'error',
-          content: 'Current working directory is not git repo. Unable to proceed with chat-git.',
+          content:
+            'Current working directory is not git repo. Unable to proceed with chat-git.',
         };
       }
-    } catch (error) {
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       return {
         type: 'message',
         messageType: 'error',
-        content: 'Current working directory is not git repo or checkIsRepo failed. Unable to proceed with chat-git.',
+        content: `Current working directory is not git repo or checkIsRepo failed. Unable to proceed with chat-git: ${errorMessage}`,
       };
     }
     try {
@@ -324,20 +337,22 @@ const resumeCommand: SlashCommand = {
           content: 'Git repo is not clean, unable to checkout.',
         };
       }
-    } catch (error) {
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       return {
         type: 'message',
         messageType: 'error',
-        content: `Failed checking git repo status, ${error}`,
+        content: `Failed checking git repo status: ${errorMessage}`,
       };
     }
     try {
       await repo.checkout(commitHash);
-    } catch (error) {
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       return {
         type: 'message',
         messageType: 'error',
-        content: `Failed git checkout ${commitHash}, ${error}`,
+        content: `Failed git checkout ${commitHash}: ${errorMessage}`,
       };
     }
 
@@ -379,7 +394,8 @@ const resumeCommand: SlashCommand = {
 
 const deleteCommand: SlashCommand = {
   name: 'delete',
-  description: 'Delete a conversation checkpoint (git snapshot remains). Usage: /chat-git delete <tag>',
+  description:
+    'Delete a conversation checkpoint (git snapshot remains). Usage: /chat-git delete <tag>',
   kind: CommandKind.BUILT_IN,
   autoExecute: true,
   action: async (context, args): Promise<MessageActionReturn> => {
@@ -396,10 +412,10 @@ const deleteCommand: SlashCommand = {
     // the chat with given tag will still be there
     try {
       const chatGitLog = JSON.parse(readFileSync(chatGitLogFile, 'utf-8'));
-      const tagIndex = chatGitLog.findIndex((entry : { commitHash : string; tag : string }) => {
-        return entry.tag == tag;
-      });
-      if (!tagIndex) {
+      const tagIndex = chatGitLog.findIndex(
+        (entry: { commitHash: string; tag: string }) => entry.tag === tag,
+      );
+      if (tagIndex === -1) {
         return {
           type: 'message',
           messageType: 'error',
@@ -408,11 +424,12 @@ const deleteCommand: SlashCommand = {
       }
       chatGitLog.splice(tagIndex, 1);
       writeFileSync(chatGitLogFile, JSON.stringify(chatGitLog), 'utf-8');
-    } catch (error) {
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       return {
         type: 'message',
         messageType: 'error',
-        content: `Reading or writing to ${chatGitLogFile} failed, ${error}`,
+        content: `Reading or writing to ${chatGitLogFile} failed: ${errorMessage}`,
       };
     }
 
@@ -447,10 +464,5 @@ export const chatGitCommand: SlashCommand = {
   description: 'Manage conversation history together with git commits',
   kind: CommandKind.BUILT_IN,
   autoExecute: false,
-  subCommands: [
-    listCommand,
-    saveCommand,
-    resumeCommand,
-    deleteCommand,
-  ],
+  subCommands: [listCommand, saveCommand, resumeCommand, deleteCommand],
 };
